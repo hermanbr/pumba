@@ -29,6 +29,42 @@ type delayCommand struct {
 	distribution string
 }
 
+// validateDelay checks netem delay parameters; shared by the delay and combo commands.
+func validateDelay(delay, jitter int, correlation float64, distribution string) error {
+	// check delay time
+	if delay <= 0 {
+		return errors.New("non-positive delay time")
+	}
+	// get delay variation
+	if jitter < 0 || jitter > delay {
+		return errors.New("invalid delay jitter: must be non-negative and smaller than delay time")
+	}
+	// get delay variation
+	if correlation < 0.0 || correlation > 100.0 {
+		return errors.New("invalid delay correlation: must be between 0.0 and 100.0")
+	}
+	// get distribution
+	if !slices.Contains(delayDistribution, distribution) {
+		return errors.New("invalid delay distribution: must be one of {uniform | normal | pareto |  paretonormal}")
+	}
+	return nil
+}
+
+// delayArgs builds the netem 'delay ...' argument list; shared by the delay and combo commands.
+func delayArgs(delay, jitter int, correlation float64, distribution string) []string {
+	cmd := []string{"delay", strconv.Itoa(delay) + "ms"}
+	if jitter > 0 {
+		cmd = append(cmd, strconv.Itoa(jitter)+"ms")
+	}
+	if correlation > 0 {
+		cmd = append(cmd, strconv.FormatFloat(correlation, 'f', 2, 64))
+	}
+	if distribution != "" {
+		cmd = append(cmd, "distribution", distribution)
+	}
+	return cmd
+}
+
 // NewDelayCommand create new netem delay command
 func NewDelayCommand(client netemClient,
 	gp *chaos.GlobalParams,
@@ -39,21 +75,8 @@ func NewDelayCommand(client netemClient,
 	correlation float64, // delay correlation
 	distribution string, // delay distribution
 ) (chaos.Command, error) {
-	// check delay time
-	if delay <= 0 {
-		return nil, errors.New("non-positive delay time")
-	}
-	// get delay variation
-	if jitter < 0 || jitter > delay {
-		return nil, errors.New("invalid delay jitter: must be non-negative and smaller than delay time")
-	}
-	// get delay variation
-	if correlation < 0.0 || correlation > 100.0 {
-		return nil, errors.New("invalid delay correlation: must be between 0.0 and 100.0")
-	}
-	// get distribution
-	if !slices.Contains(delayDistribution, distribution) {
-		return nil, errors.New("invalid delay distribution: must be one of {uniform | normal | pareto |  paretonormal}")
+	if err := validateDelay(delay, jitter, correlation, distribution); err != nil {
+		return nil, err
 	}
 	return &delayCommand{
 		client:       client,
@@ -95,15 +118,5 @@ func (n *delayCommand) Run(ctx context.Context, random bool) error {
 }
 
 func (n *delayCommand) buildNetemCmd() []string {
-	cmd := []string{"delay", strconv.Itoa(n.time) + "ms"}
-	if n.jitter > 0 {
-		cmd = append(cmd, strconv.Itoa(n.jitter)+"ms")
-	}
-	if n.correlation > 0 {
-		cmd = append(cmd, strconv.FormatFloat(n.correlation, 'f', 2, 64))
-	}
-	if n.distribution != "" {
-		cmd = append(cmd, []string{"distribution", n.distribution}...)
-	}
-	return cmd
+	return delayArgs(n.time, n.jitter, n.correlation, n.distribution)
 }

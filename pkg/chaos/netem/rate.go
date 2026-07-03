@@ -34,6 +34,38 @@ type rateCommand struct {
 	cellOverhead   int
 }
 
+// validateRateParams checks netem rate parameters; shared by the rate and combo commands.
+func validateRateParams(rate string, cellSize int) error {
+	// validate target egress rate
+	if rate == "" {
+		return errors.New("undefined rate limit")
+	}
+	if _, err := parseRate(rate); err != nil {
+		return fmt.Errorf("invalid rate: %w", err)
+	}
+
+	// validate cell size
+	if cellSize < 0 {
+		return errors.New("invalid cell size: must be a non-negative integer")
+	}
+	return nil
+}
+
+// rateArgs builds the netem 'rate ...' argument list; shared by the rate and combo commands.
+func rateArgs(rate string, packetOverhead, cellSize, cellOverhead int) []string {
+	cmd := []string{"rate", rate}
+	if packetOverhead != 0 {
+		cmd = append(cmd, strconv.Itoa(packetOverhead))
+	}
+	if cellSize > 0 {
+		cmd = append(cmd, strconv.Itoa(cellSize))
+	}
+	if cellOverhead != 0 {
+		cmd = append(cmd, strconv.Itoa(cellOverhead))
+	}
+	return cmd
+}
+
 // NewRateCommand create new netem rate command
 func NewRateCommand(client netemClient,
 	gp *chaos.GlobalParams,
@@ -44,18 +76,8 @@ func NewRateCommand(client netemClient,
 	cellSize, // cell size of the simulated link layer scheme
 	cellOverhead int, // per cell overhead; in bytes
 ) (chaos.Command, error) {
-	// validate target egress rate
-	if rate == "" {
-		return nil, errors.New("undefined rate limit")
-	}
-	rate, err := parseRate(rate)
-	if err != nil {
-		return nil, fmt.Errorf("invalid rate: %w", err)
-	}
-
-	// validate cell size
-	if cellSize < 0 {
-		return nil, errors.New("invalid cell size: must be a non-negative integer")
+	if err := validateRateParams(rate, cellSize); err != nil {
+		return nil, err
 	}
 
 	return &rateCommand{
@@ -101,15 +123,5 @@ func (n *rateCommand) Run(ctx context.Context, random bool) error {
 }
 
 func (n *rateCommand) buildNetemCmd() []string {
-	cmd := []string{"rate", n.rate}
-	if n.packetOverhead != 0 {
-		cmd = append(cmd, strconv.Itoa(n.packetOverhead))
-	}
-	if n.cellSize > 0 {
-		cmd = append(cmd, strconv.Itoa(n.cellSize))
-	}
-	if n.cellOverhead != 0 {
-		cmd = append(cmd, strconv.Itoa(n.cellOverhead))
-	}
-	return cmd
+	return rateArgs(n.rate, n.packetOverhead, n.cellSize, n.cellOverhead)
 }

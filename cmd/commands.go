@@ -71,6 +71,7 @@ func initializeCLICommands(runtime chaos.Runtime) []cli.Command {
 				*netemCmd.NewRateCLICommand(topContext, runtime),
 				*netemCmd.NewDuplicateCLICommand(topContext, runtime),
 				*netemCmd.NewCorruptCLICommand(topContext, runtime),
+				*netemCmd.NewComboCLICommand(topContext, runtime),
 			},
 		},
 		{

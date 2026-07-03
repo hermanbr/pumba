@@ -185,6 +185,26 @@ pumba netem --duration 10m rate --rate 1mbit --packetoverhead 20 mydb
 
 Options: `--rate` (e.g., `100kbit`, `1mbit`), `--packetoverhead` (bytes), `--cellsize` (bytes), `--celloverhead` (bytes).
 
+### combo
+
+Combine multiple netem effects (delay, loss, duplicate, corrupt, rate) in a **single** netem qdisc. Only one root netem qdisc can exist per interface, so this is the way to apply several effects to the same container at once — running separate `netem delay` and `netem loss` processes against the same target fails.
+
+Enable an effect by setting its primary flag; unset effects are skipped.
+
+```bash
+# Add 100ms delay AND 20% packet loss to mydb for 5 minutes
+pumba netem --duration 5m combo --delay 100 --loss 20 mydb
+
+# Full degradation: delay + jitter, loss, corruption and a bandwidth cap
+pumba netem --duration 10m combo \
+    --delay 100 --delay-jitter 10 \
+    --loss 20 --corrupt 5 --rate 1mbit myapp
+```
+
+Options: `--delay` (ms), `--delay-jitter` (ms), `--delay-correlation` (%), `--delay-distribution`, `--loss` (%), `--loss-correlation` (%), `--corrupt` (%), `--corrupt-correlation` (%), `--duplicate` (%), `--duplicate-correlation` (%), `--rate` (e.g., `100kbit`), `--rate-packet-overhead` (bytes), `--rate-cell-size` (bytes), `--rate-cell-overhead` (bytes).
+
+> Note: `combo` supports the simple random loss model only; the `loss-state` and `loss-gemodel` models are mutually exclusive alternatives and cannot be combined.
+
 ## IPTables Commands
 
 The `iptables` command manipulates **incoming** traffic by adding packet filtering rules. All iptables commands support these common options:
