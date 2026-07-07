@@ -215,6 +215,43 @@ teardown() {
     assert_sidecar_cleaned
 }
 
+@test "Should apply chained netem effects in a single qdisc" {
+    # Given a running container
+    create_test_container "pingtest" "alpine" "sleep infinity"
+    assert_container_running "pingtest"
+    ensure_nettools_image
+
+    # Chain delay + loss in one invocation: combined into a single netem qdisc
+    pumba netem --duration 10s --tc-image ${NETTOOLS_IMAGE} --pull-image=false delay --time 100 loss --percent 10 pingtest &
+    PUMBA_PID=$!
+
+    # Wait for netem to be applied
+    wait_for 5 "nsenter -t \$(docker inspect -f '{{.State.Pid}}' pingtest) -n tc qdisc show dev eth0 2>/dev/null | grep -qi netem" "netem to be applied"
+
+    # Verify a single netem qdisc carries both effects
+    local pid
+    pid=$(docker inspect -f '{{.State.Pid}}' pingtest)
+    run nsenter -t "$pid" -n tc qdisc show dev eth0
+    assert_output --partial "netem"
+    assert_output --partial "delay"
+    assert_output --partial "loss"
+
+    # Wait for pumba to finish and clean up
+    wait $PUMBA_PID
+    local pumba_exit=$?
+    [ $pumba_exit -eq 0 ]
+
+    # Verify cleanup
+    assert_netem_cleaned "pingtest"
+    assert_sidecar_cleaned
+}
+
+@test "Should fail when the same effect is chained twice" {
+    run pumba netem --duration 200ms delay --time 100 delay --time 50 pingtest
+    assert_failure
+    assert_output --partial 'duplicate netem effect "delay"'
+}
+
 @test "Should clean up sidecar containers after netem completes" {
     create_test_container "pingtest" "alpine" "sleep infinity"
     assert_container_running "pingtest"

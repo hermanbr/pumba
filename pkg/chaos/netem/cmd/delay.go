@@ -21,34 +21,41 @@ type DelayParams struct {
 	Jitter       int
 	Correlation  float64
 	Distribution string
+	Chain        *netem.EffectsSpec // set when additional effects are chained after this one
+}
+
+// delayFlags returns the delay subcommand's flag definitions; shared with the
+// effect-chaining registry so chained segments parse identically.
+func delayFlags() []cli.Flag {
+	return []cli.Flag{
+		cli.IntFlag{
+			Name:  "time, t",
+			Usage: "delay time; in milliseconds",
+			Value: 100, //nolint:mnd
+		},
+		cli.IntFlag{
+			Name:  "jitter, j",
+			Usage: "random delay variation (jitter); in milliseconds; example: 100ms ± 10ms",
+			Value: 10, //nolint:mnd
+		},
+		cli.Float64Flag{
+			Name:  "correlation, c",
+			Usage: "delay correlation; in percentage",
+			Value: 20, //nolint:mnd
+		},
+		cli.StringFlag{
+			Name:  "distribution, d",
+			Usage: "delay distribution, can be one of {<empty> | uniform | normal | pareto |  paretonormal}",
+			Value: "",
+		},
+	}
 }
 
 // NewDelayCLICommand initialize CLI delay command.
 func NewDelayCLICommand(ctx context.Context, runtime chaos.Runtime) *cli.Command {
 	return chaoscmd.NewAction(ctx, runtime, chaoscmd.Spec[DelayParams]{
-		Name: "delay",
-		Flags: []cli.Flag{
-			cli.IntFlag{
-				Name:  "time, t",
-				Usage: "delay time; in milliseconds",
-				Value: 100, //nolint:mnd
-			},
-			cli.IntFlag{
-				Name:  "jitter, j",
-				Usage: "random delay variation (jitter); in milliseconds; example: 100ms ± 10ms",
-				Value: 10, //nolint:mnd
-			},
-			cli.Float64Flag{
-				Name:  "correlation, c",
-				Usage: "delay correlation; in percentage",
-				Value: 20, //nolint:mnd
-			},
-			cli.StringFlag{
-				Name:  "distribution, d",
-				Usage: "delay distribution, can be one of {<empty> | uniform | normal | pareto |  paretonormal}",
-				Value: "",
-			},
-		},
+		Name:        "delay",
+		Flags:       delayFlags(),
 		Usage:       "delay egress traffic",
 		ArgsUsage:   fmt.Sprintf("containers (name, list of names, or RE2 regex if prefixed with %q", chaos.Re2Prefix),
 		Description: "delay egress traffic for specified containers; networks show variability so it is possible to add random variation; delay variation isn't purely random, so to emulate that there is a correlation",
@@ -62,16 +69,27 @@ func parseDelayParams(c cliflags.Flags, gp *chaos.GlobalParams) (DelayParams, er
 	if err != nil {
 		return DelayParams{}, fmt.Errorf("error parsing netem parameters: %w", err)
 	}
-	return DelayParams{
+	chain, chained, err := chainSpec(c, gp, applyDelay)
+	if err != nil {
+		return DelayParams{}, err
+	}
+	params := DelayParams{
 		Base:         base,
 		Limit:        limit,
 		Time:         c.Int("time"),
 		Jitter:       c.Int("jitter"),
 		Correlation:  c.Float64("correlation"),
 		Distribution: c.String("distribution"),
-	}, nil
+	}
+	if chained {
+		params.Chain = &chain
+	}
+	return params, nil
 }
 
 func buildDelayCommand(client container.Client, gp *chaos.GlobalParams, p DelayParams) (chaos.Command, error) {
+	if p.Chain != nil {
+		return netem.NewEffectsCommand(client, gp, p.Base, p.Limit, *p.Chain)
+	}
 	return netem.NewDelayCommand(client, gp, p.Base, p.Limit, p.Time, p.Jitter, p.Correlation, p.Distribution)
 }

@@ -19,24 +19,31 @@ type LossParams struct {
 	Limit       int
 	Percent     float64
 	Correlation float64
+	Chain       *netem.EffectsSpec // set when additional effects are chained after this one
+}
+
+// lossFlags returns the loss subcommand's flag definitions; shared with the
+// effect-chaining registry so chained segments parse identically.
+func lossFlags() []cli.Flag {
+	return []cli.Flag{
+		cli.Float64Flag{
+			Name:  "percent, p",
+			Usage: "packet loss percentage",
+			Value: 0.0,
+		},
+		cli.Float64Flag{
+			Name:  "correlation, c",
+			Usage: "loss correlation; in percentage",
+			Value: 0.0,
+		},
+	}
 }
 
 // NewLossCLICommand initialize CLI loss command.
 func NewLossCLICommand(ctx context.Context, runtime chaos.Runtime) *cli.Command {
 	return chaoscmd.NewAction(ctx, runtime, chaoscmd.Spec[LossParams]{
-		Name: "loss",
-		Flags: []cli.Flag{
-			cli.Float64Flag{
-				Name:  "percent, p",
-				Usage: "packet loss percentage",
-				Value: 0.0,
-			},
-			cli.Float64Flag{
-				Name:  "correlation, c",
-				Usage: "loss correlation; in percentage",
-				Value: 0.0,
-			},
-		},
+		Name:        "loss",
+		Flags:       lossFlags(),
 		Usage:       "adds packet losses",
 		ArgsUsage:   fmt.Sprintf("containers (name, list of names, or RE2 regex if prefixed with %q", chaos.Re2Prefix),
 		Description: "adds packet losses, based on independent (Bernoulli) probability model\n \tsee:  http://www.voiptroubleshooter.com/indepth/burstloss.html",
@@ -50,14 +57,25 @@ func parseLossParams(c cliflags.Flags, gp *chaos.GlobalParams) (LossParams, erro
 	if err != nil {
 		return LossParams{}, fmt.Errorf("error parsing netem parameters: %w", err)
 	}
-	return LossParams{
+	chain, chained, err := chainSpec(c, gp, applyLoss)
+	if err != nil {
+		return LossParams{}, err
+	}
+	params := LossParams{
 		Base:        base,
 		Limit:       limit,
 		Percent:     c.Float64("percent"),
 		Correlation: c.Float64("correlation"),
-	}, nil
+	}
+	if chained {
+		params.Chain = &chain
+	}
+	return params, nil
 }
 
 func buildLossCommand(client container.Client, gp *chaos.GlobalParams, p LossParams) (chaos.Command, error) {
+	if p.Chain != nil {
+		return netem.NewEffectsCommand(client, gp, p.Base, p.Limit, *p.Chain)
+	}
 	return netem.NewLossCommand(client, gp, p.Base, p.Limit, p.Percent, p.Correlation)
 }

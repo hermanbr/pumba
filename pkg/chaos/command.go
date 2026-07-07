@@ -72,9 +72,15 @@ func ParseGlobalParams(c cliflags.Flags) *GlobalParams {
 
 // get names list of filter pattern from command line
 func getNamesOrPattern(c cliflags.Flags) ([]string, string) {
+	return NamesOrPattern(c.Args())
+}
+
+// NamesOrPattern splits positional CLI args into explicit container names or
+// a single re2: regex pattern. Exported for parsers that re-derive targets
+// after consuming extra tokens from the arg list (netem effect chaining).
+func NamesOrPattern(args []string) ([]string, string) {
 	var names []string
 	pattern := ""
-	args := c.Args()
 	// no Args means ALL containers
 	if len(args) == 0 {
 		return names, pattern

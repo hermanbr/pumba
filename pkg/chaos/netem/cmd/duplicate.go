@@ -19,24 +19,31 @@ type DuplicateParams struct {
 	Limit       int
 	Percent     float64
 	Correlation float64
+	Chain       *netem.EffectsSpec // set when additional effects are chained after this one
+}
+
+// duplicateFlags returns the duplicate subcommand's flag definitions; shared
+// with the effect-chaining registry so chained segments parse identically.
+func duplicateFlags() []cli.Flag {
+	return []cli.Flag{
+		cli.Float64Flag{
+			Name:  "percent, p",
+			Usage: "packet duplicate percentage",
+			Value: 0.0,
+		},
+		cli.Float64Flag{
+			Name:  "correlation, c",
+			Usage: "duplicate correlation; in percentage",
+			Value: 0.0,
+		},
+	}
 }
 
 // NewDuplicateCLICommand initialize CLI duplicate command.
 func NewDuplicateCLICommand(ctx context.Context, runtime chaos.Runtime) *cli.Command {
 	return chaoscmd.NewAction(ctx, runtime, chaoscmd.Spec[DuplicateParams]{
-		Name: "duplicate",
-		Flags: []cli.Flag{
-			cli.Float64Flag{
-				Name:  "percent, p",
-				Usage: "packet duplicate percentage",
-				Value: 0.0,
-			},
-			cli.Float64Flag{
-				Name:  "correlation, c",
-				Usage: "duplicate correlation; in percentage",
-				Value: 0.0,
-			},
-		},
+		Name:        "duplicate",
+		Flags:       duplicateFlags(),
 		Usage:       "adds packet duplication",
 		ArgsUsage:   fmt.Sprintf("containers (name, list of names, or RE2 regex if prefixed with %q", chaos.Re2Prefix),
 		Description: "adds packet duplication, based on independent (Bernoulli) probability model\n \tsee:  http://www.voiptroubleshooter.com/indepth/burstloss.html",
@@ -50,14 +57,25 @@ func parseDuplicateParams(c cliflags.Flags, gp *chaos.GlobalParams) (DuplicatePa
 	if err != nil {
 		return DuplicateParams{}, fmt.Errorf("error parsing netem parameters: %w", err)
 	}
-	return DuplicateParams{
+	chain, chained, err := chainSpec(c, gp, applyDuplicate)
+	if err != nil {
+		return DuplicateParams{}, err
+	}
+	params := DuplicateParams{
 		Base:        base,
 		Limit:       limit,
 		Percent:     c.Float64("percent"),
 		Correlation: c.Float64("correlation"),
-	}, nil
+	}
+	if chained {
+		params.Chain = &chain
+	}
+	return params, nil
 }
 
 func buildDuplicateCommand(client container.Client, gp *chaos.GlobalParams, p DuplicateParams) (chaos.Command, error) {
+	if p.Chain != nil {
+		return netem.NewEffectsCommand(client, gp, p.Base, p.Limit, *p.Chain)
+	}
 	return netem.NewDuplicateCommand(client, gp, p.Base, p.Limit, p.Percent, p.Correlation)
 }

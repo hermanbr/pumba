@@ -185,6 +185,28 @@ pumba netem --duration 10m rate --rate 1mbit --packetoverhead 20 mydb
 
 Options: `--rate` (e.g., `100kbit`, `1mbit`), `--packetoverhead` (bytes), `--cellsize` (bytes), `--celloverhead` (bytes).
 
+### Combining effects (chaining)
+
+Chain several netem subcommands in **one invocation** to combine them in a **single** netem qdisc. Only one root netem qdisc can exist per interface, so this is the way to apply several effects to the same container at once — running separate `netem delay` and `netem loss` processes against the same target fails.
+
+Each chained effect uses its normal subcommand name, flags, and defaults; whatever follows the last effect's flags is the container list (or `re2:` pattern), exactly as usual.
+
+```bash
+# Add 100ms delay AND 20% packet loss to mydb for 5 minutes
+pumba netem --duration 5m delay --time 100 loss --percent 20 mydb
+
+# Full degradation: delay + jitter, loss, corruption and a bandwidth cap
+pumba netem --duration 10m \
+    delay --time 100 --jitter 10 \
+    loss --percent 20 corrupt --percent 5 rate --rate 1mbit myapp
+```
+
+Chainable effects: `delay`, `loss`, `corrupt`, `duplicate`, `rate`. Notes:
+
+- The same effect cannot appear twice in a chain.
+- `loss-state` and `loss-gemodel` cannot be chained — loss models are mutually exclusive on a single qdisc.
+- Effect keywords take precedence over container names: to target a container literally named `loss`, use `re2:^loss$`.
+
 ## IPTables Commands
 
 The `iptables` command manipulates **incoming** traffic by adding packet filtering rules. All iptables commands support these common options:
