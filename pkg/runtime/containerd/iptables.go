@@ -16,7 +16,10 @@ func (c *containerdClient) IPTablesContainer(ctx context.Context, req *ctr.IPTab
 	if req.DryRun {
 		return nil
 	}
-	commands := buildIPTablesCommands(req.CmdPrefix, req.CmdSuffix, req.SrcIPs, req.DstIPs, req.SPorts, req.DPorts)
+	var commands [][]string
+	for _, prefix := range req.CmdPrefixes {
+		commands = append(commands, buildIPTablesCommands(prefix, req.CmdSuffix, req.SrcIPs, req.DstIPs, req.SPorts, req.DPorts)...)
+	}
 	if req.Sidecar.Image != "" {
 		return c.sidecarExec(ctx, req.Container, req.Sidecar.Image, req.Sidecar.Pull, "iptables", commands)
 	}
@@ -31,7 +34,10 @@ func (c *containerdClient) StopIPTablesContainer(ctx context.Context, req *ctr.I
 	if req.DryRun {
 		return nil
 	}
-	commands := buildIPTablesCommands(req.CmdPrefix, req.CmdSuffix, req.SrcIPs, req.DstIPs, req.SPorts, req.DPorts)
+	var commands [][]string
+	for _, prefix := range req.CmdPrefixes {
+		commands = append(commands, buildIPTablesCommands(prefix, req.CmdSuffix, req.SrcIPs, req.DstIPs, req.SPorts, req.DPorts)...)
+	}
 	if req.Sidecar.Image != "" {
 		return c.sidecarExec(ctx, req.Container, req.Sidecar.Image, req.Sidecar.Pull, "iptables", commands)
 	}

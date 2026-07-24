@@ -209,19 +209,20 @@ Chainable effects: `delay`, `loss`, `corrupt`, `duplicate`, `rate`. Notes:
 
 ## IPTables Commands
 
-The `iptables` command manipulates **incoming** traffic by adding packet filtering rules. All iptables commands support these common options:
+The `iptables` command manipulates **incoming** traffic by adding packet filtering rules (the `INPUT` chain). With `--bidirectional` it also filters **outgoing** traffic (`OUTPUT` chain) in the same run. All iptables commands support these common options:
 
-| Flag                      | Description                               | Default                                           |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------- |
-| `--duration`, `-d`        | Emulation duration                        | required                                          |
-| `--interface`, `-i`       | Network interface                         | `eth0`                                            |
-| `--protocol`, `-p`        | Protocol filter (any, tcp, udp, icmp)     | `any`                                             |
-| `--source`, `--src`       | Source IP filter (supports CIDR)          | all                                               |
-| `--destination`, `--dest` | Destination IP filter (supports CIDR)     | all                                               |
-| `--src-port`, `--sport`   | Source port filter (comma-separated)      | all                                               |
-| `--dst-port`, `--dport`   | Destination port filter (comma-separated) | all                                               |
-| `--iptables-image`        | Docker image with `iptables` tool         | `ghcr.io/alexei-led/pumba-alpine-nettools:latest` |
-| `--pull-image`            | Force pull the image                      | `true`                                            |
+| Flag                      | Description                                          | Default                                           |
+| ------------------------- | --------------------------------------------------- | ------------------------------------------------- |
+| `--duration`, `-d`        | Emulation duration                                  | required                                          |
+| `--interface`, `-i`       | Network interface                                   | `eth0`                                            |
+| `--protocol`, `-p`        | Protocol filter (any, tcp, udp, icmp)               | `any`                                             |
+| `--source`, `--src`       | Source IP filter (supports CIDR)                    | all                                               |
+| `--destination`, `--dest` | Destination IP filter (supports CIDR)               | all                                               |
+| `--src-port`, `--sport`   | Source port filter (comma-separated)                | all                                               |
+| `--dst-port`, `--dport`   | Destination port filter (comma-separated)           | all                                               |
+| `--bidirectional`         | Also filter egress (OUTPUT), not just ingress; IPv4 | `false`                                           |
+| `--iptables-image`        | Docker image with `iptables` tool                   | `ghcr.io/alexei-led/pumba-alpine-nettools:latest` |
+| `--pull-image`            | Force pull the image                                 | `true`                                            |
 
 Run `pumba iptables --help` for the full list of options.
 
@@ -256,6 +257,20 @@ pumba iptables --duration 30s --protocol tcp --source 10.0.0.0/24 --dst-port 443
 ```
 
 Options: `--mode` (random|nth), `--probability` (0.0-1.0), `--every` (nth mode), `--packet` (nth initial counter).
+
+#### Bidirectional (ingress + egress)
+
+By default `iptables loss` only drops **incoming** packets. Add `--bidirectional` to drop **outgoing** packets too — the same rule is installed on both the `INPUT` (`-i`) and `OUTPUT` (`-o`) chains in one invocation:
+
+```bash
+# Drop 20% of packets in BOTH directions for 5 minutes
+pumba iptables --duration 5m --bidirectional loss --probability 0.2 web
+```
+
+Notes:
+
+- IPv4 only — the rules use `iptables`; IPv6 (`ip6tables`) traffic is not affected.
+- Any `--source`/`--destination`/`--src-port`/`--dst-port` filters are **replicated verbatim** on both chains (the match fields are not swapped between directions). For precise per-direction semantics, run two tailored invocations instead.
 
 ## Advanced Scenarios
 

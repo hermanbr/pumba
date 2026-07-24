@@ -991,10 +991,10 @@ func TestStopNetemContainer_Success(t *testing.T) {
 func TestIPTablesContainer_Dryrun(t *testing.T) {
 	client := newTestClient(NewMockapiClient(t))
 	err := client.IPTablesContainer(context.Background(), &ctr.IPTablesRequest{
-		Container: testContainer("c1"),
-		CmdPrefix: []string{"-A", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
-		DryRun:    true,
+		Container:   testContainer("c1"),
+		CmdPrefixes: [][]string{{"-A", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
+		DryRun:      true,
 	})
 	assert.NoError(t, err)
 }
@@ -1010,9 +1010,9 @@ func TestIPTablesContainer_Success(t *testing.T) {
 
 	client := newTestClient(api)
 	err := client.IPTablesContainer(context.Background(), &ctr.IPTablesRequest{
-		Container: testContainer("c1"),
-		CmdPrefix: []string{"-A", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
+		Container:   testContainer("c1"),
+		CmdPrefixes: [][]string{{"-A", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
 	})
 	require.NoError(t, err)
 }
@@ -1027,9 +1027,9 @@ func TestIPTablesContainer_ExecError(t *testing.T) {
 
 	client := newTestClient(api)
 	err := client.IPTablesContainer(context.Background(), &ctr.IPTablesRequest{
-		Container: testContainer("c1"),
-		CmdPrefix: []string{"-A", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
+		Container:   testContainer("c1"),
+		CmdPrefixes: [][]string{{"-A", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to run iptables command")
@@ -1038,10 +1038,10 @@ func TestIPTablesContainer_ExecError(t *testing.T) {
 func TestStopIPTablesContainer_Dryrun(t *testing.T) {
 	client := newTestClient(NewMockapiClient(t))
 	err := client.StopIPTablesContainer(context.Background(), &ctr.IPTablesRequest{
-		Container: testContainer("c1"),
-		CmdPrefix: []string{"-D", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
-		DryRun:    true,
+		Container:   testContainer("c1"),
+		CmdPrefixes: [][]string{{"-D", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
+		DryRun:      true,
 	})
 	assert.NoError(t, err)
 }
@@ -1057,9 +1057,9 @@ func TestStopIPTablesContainer_Success(t *testing.T) {
 
 	client := newTestClient(api)
 	err := client.StopIPTablesContainer(context.Background(), &ctr.IPTablesRequest{
-		Container: testContainer("c1"),
-		CmdPrefix: []string{"-D", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
+		Container:   testContainer("c1"),
+		CmdPrefixes: [][]string{{"-D", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
 	})
 	require.NoError(t, err)
 }

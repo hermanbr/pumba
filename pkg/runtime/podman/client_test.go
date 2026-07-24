@@ -125,10 +125,10 @@ func TestPodmanClient_RootlessGuards_ReturnError(t *testing.T) {
 
 	t.Run("IPTablesContainer", func(t *testing.T) {
 		err := p.IPTablesContainer(ctx, &ctr.IPTablesRequest{
-			Container: target,
-			CmdPrefix: []string{"-A", "INPUT"},
-			CmdSuffix: []string{"-j", "DROP"},
-			Duration:  time.Second,
+			Container:   target,
+			CmdPrefixes: [][]string{{"-A", "INPUT"}},
+			CmdSuffix:   []string{"-j", "DROP"},
+			Duration:    time.Second,
 		})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "iptables")
@@ -137,9 +137,9 @@ func TestPodmanClient_RootlessGuards_ReturnError(t *testing.T) {
 
 	t.Run("StopIPTablesContainer", func(t *testing.T) {
 		err := p.StopIPTablesContainer(ctx, &ctr.IPTablesRequest{
-			Container: target,
-			CmdPrefix: []string{"-D", "INPUT"},
-			CmdSuffix: []string{"-j", "DROP"},
+			Container:   target,
+			CmdPrefixes: [][]string{{"-D", "INPUT"}},
+			CmdSuffix:   []string{"-j", "DROP"},
 		})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "iptables")
@@ -181,20 +181,20 @@ func TestPodmanClient_RootfulGuards_Delegate(t *testing.T) {
 	prefix := []string{"-A", "INPUT"}
 	suffix := []string{"-j", "DROP"}
 	ipReq := &ctr.IPTablesRequest{
-		Container: target,
-		CmdPrefix: prefix,
-		CmdSuffix: suffix,
-		Duration:  time.Second,
-		Sidecar:   ctr.SidecarSpec{Image: img},
+		Container:   target,
+		CmdPrefixes: [][]string{prefix},
+		CmdSuffix:   suffix,
+		Duration:    time.Second,
+		Sidecar:     ctr.SidecarSpec{Image: img},
 	}
 	mockDelegate.EXPECT().IPTablesContainer(ctx, ipReq).Return(nil).Once()
 	require.NoError(t, p.IPTablesContainer(ctx, ipReq))
 
 	stopIPReq := &ctr.IPTablesRequest{
-		Container: target,
-		CmdPrefix: prefix,
-		CmdSuffix: suffix,
-		Sidecar:   ctr.SidecarSpec{Image: img},
+		Container:   target,
+		CmdPrefixes: [][]string{prefix},
+		CmdSuffix:   suffix,
+		Sidecar:     ctr.SidecarSpec{Image: img},
 	}
 	mockDelegate.EXPECT().StopIPTablesContainer(ctx, stopIPReq).Return(nil).Once()
 	require.NoError(t, p.StopIPTablesContainer(ctx, stopIPReq))

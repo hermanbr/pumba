@@ -101,20 +101,20 @@ func TestLossCommand_Run_RandomMode(t *testing.T) {
 	cmdSuffix := []string{"-m", "statistic", "--mode", "random", "--probability", "0.50", "-j", "DROP"}
 
 	addReq := &container.IPTablesRequest{
-		Container: target,
-		CmdPrefix: addCmdPrefix,
-		CmdSuffix: cmdSuffix,
-		Duration:  100 * time.Millisecond,
-		Sidecar:   container.SidecarSpec{Image: "iptables-image"},
-		DryRun:    true,
+		Container:   target,
+		CmdPrefixes: [][]string{addCmdPrefix},
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
 	}
 	delReq := &container.IPTablesRequest{
-		Container: target,
-		CmdPrefix: delCmdPrefix,
-		CmdSuffix: cmdSuffix,
-		Duration:  100 * time.Millisecond,
-		Sidecar:   container.SidecarSpec{Image: "iptables-image"},
-		DryRun:    true,
+		Container:   target,
+		CmdPrefixes: [][]string{delCmdPrefix},
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
 	}
 	mockClient.EXPECT().IPTablesContainer(mock.Anything, addReq).Return(nil)
 	mockClient.EXPECT().StopIPTablesContainer(mock.Anything, delReq).Return(nil)
@@ -151,20 +151,20 @@ func TestLossCommand_Run_NTHMode(t *testing.T) {
 	cmdSuffix := []string{"-m", "statistic", "--mode", "nth", "--every", "5", "--packet", "0", "-j", "DROP"}
 
 	addReq := &container.IPTablesRequest{
-		Container: target,
-		CmdPrefix: addCmdPrefix,
-		CmdSuffix: cmdSuffix,
-		Duration:  100 * time.Millisecond,
-		Sidecar:   container.SidecarSpec{Image: "iptables-image"},
-		DryRun:    true,
+		Container:   target,
+		CmdPrefixes: [][]string{addCmdPrefix},
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
 	}
 	delReq := &container.IPTablesRequest{
-		Container: target,
-		CmdPrefix: delCmdPrefix,
-		CmdSuffix: cmdSuffix,
-		Duration:  100 * time.Millisecond,
-		Sidecar:   container.SidecarSpec{Image: "iptables-image"},
-		DryRun:    true,
+		Container:   target,
+		CmdPrefixes: [][]string{delCmdPrefix},
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
 	}
 	mockClient.EXPECT().IPTablesContainer(mock.Anything, addReq).Return(nil)
 	mockClient.EXPECT().StopIPTablesContainer(mock.Anything, delReq).Return(nil)
@@ -201,20 +201,78 @@ func TestLossCommand_Run_WithProtocol(t *testing.T) {
 	cmdSuffix := []string{"-m", "statistic", "--mode", "random", "--probability", "0.50", "-j", "DROP"}
 
 	addReq := &container.IPTablesRequest{
-		Container: target,
-		CmdPrefix: addCmdPrefix,
-		CmdSuffix: cmdSuffix,
-		Duration:  100 * time.Millisecond,
-		Sidecar:   container.SidecarSpec{Image: "iptables-image"},
-		DryRun:    true,
+		Container:   target,
+		CmdPrefixes: [][]string{addCmdPrefix},
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
 	}
 	delReq := &container.IPTablesRequest{
-		Container: target,
-		CmdPrefix: delCmdPrefix,
-		CmdSuffix: cmdSuffix,
-		Duration:  100 * time.Millisecond,
-		Sidecar:   container.SidecarSpec{Image: "iptables-image"},
-		DryRun:    true,
+		Container:   target,
+		CmdPrefixes: [][]string{delCmdPrefix},
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
+	}
+	mockClient.EXPECT().IPTablesContainer(mock.Anything, addReq).Return(nil)
+	mockClient.EXPECT().StopIPTablesContainer(mock.Anything, delReq).Return(nil)
+
+	cmd, err := NewLossCommand(mockClient, gparams, base, ModeRandom, 0.5, 0, 0)
+	require.NoError(t, err)
+
+	err = cmd.Run(context.Background(), false)
+	assert.NoError(t, err)
+}
+
+func TestLossCommand_Run_Bidirectional(t *testing.T) {
+	mockClient := container.NewMockClient(t)
+	target := &container.Container{
+		ContainerID:   "abc123",
+		ContainerName: "target",
+		Labels:        map[string]string{},
+		Networks:      map[string]container.NetworkLink{},
+	}
+	gparams := &chaos.GlobalParams{Names: []string{"target"}, DryRun: true}
+	base := newBase(&container.IPTablesRequest{
+		Duration: 100 * time.Millisecond,
+		Sidecar:  container.SidecarSpec{Image: "iptables-image"},
+		DryRun:   true,
+	}, "eth0", "any")
+	base.Bidirectional = true
+
+	mockClient.EXPECT().ListContainers(mock.Anything,
+		mock.AnythingOfType("container.FilterFunc"),
+		container.ListOpts{All: false, Labels: nil}).
+		Return([]*container.Container{target}, nil)
+
+	// bidirectional installs the rule on both INPUT (-i) and OUTPUT (-o)
+	addCmdPrefixes := [][]string{
+		{"-I", "INPUT", "-i", "eth0"},
+		{"-I", "OUTPUT", "-o", "eth0"},
+	}
+	delCmdPrefixes := [][]string{
+		{"-D", "INPUT", "-i", "eth0"},
+		{"-D", "OUTPUT", "-o", "eth0"},
+	}
+	cmdSuffix := []string{"-m", "statistic", "--mode", "random", "--probability", "0.50", "-j", "DROP"}
+
+	addReq := &container.IPTablesRequest{
+		Container:   target,
+		CmdPrefixes: addCmdPrefixes,
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
+	}
+	delReq := &container.IPTablesRequest{
+		Container:   target,
+		CmdPrefixes: delCmdPrefixes,
+		CmdSuffix:   cmdSuffix,
+		Duration:    100 * time.Millisecond,
+		Sidecar:     container.SidecarSpec{Image: "iptables-image"},
+		DryRun:      true,
 	}
 	mockClient.EXPECT().IPTablesContainer(mock.Anything, addReq).Return(nil)
 	mockClient.EXPECT().StopIPTablesContainer(mock.Anything, delReq).Return(nil)

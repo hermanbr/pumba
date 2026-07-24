@@ -19,10 +19,11 @@ import (
 // (`-I/-D INPUT -i <iface> [-p <proto>] …`); Limit is the --limit value
 // consumed by the per-action ListNContainers call rather than by the runtime.
 type RequestBase struct {
-	Request  *container.IPTablesRequest
-	Iface    string
-	Protocol string
-	Limit    int
+	Request       *container.IPTablesRequest
+	Iface         string
+	Protocol      string
+	Limit         int
+	Bidirectional bool
 }
 
 // ParseRequestBase reads the iptables-level flags (--duration, --interface,
@@ -82,9 +83,10 @@ func ParseRequestBase(c cliflags.Flags, gp *chaos.GlobalParams) (*RequestBase, e
 			Sidecar:  container.SidecarSpec{Image: c.String("iptables-image"), Pull: c.Bool("pull-image")},
 			DryRun:   gp.DryRun,
 		},
-		Iface:    iface,
-		Protocol: protocol,
-		Limit:    c.Int("limit"),
+		Iface:         iface,
+		Protocol:      protocol,
+		Limit:         c.Int("limit"),
+		Bidirectional: c.Bool("bidirectional"),
 	}, nil
 }
 

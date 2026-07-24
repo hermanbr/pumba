@@ -138,28 +138,28 @@ func Test_runIPTables(t *testing.T) {
 				startErr = errors.New("test error")
 			}
 			addReq := &container.IPTablesRequest{
-				Container: tt.args.container,
-				CmdPrefix: tt.args.addCmdPrefix,
-				CmdSuffix: tt.args.cmdSuffix,
-				SrcIPs:    tt.args.srcIPs,
-				DstIPs:    tt.args.dstIPs,
-				SPorts:    tt.args.sports,
-				DPorts:    tt.args.dports,
-				Duration:  tt.args.duration,
-				Sidecar:   container.SidecarSpec{Image: tt.args.image, Pull: tt.args.pull},
-				DryRun:    tt.args.dryRun,
+				Container:   tt.args.container,
+				CmdPrefixes: [][]string{tt.args.addCmdPrefix},
+				CmdSuffix:   tt.args.cmdSuffix,
+				SrcIPs:      tt.args.srcIPs,
+				DstIPs:      tt.args.dstIPs,
+				SPorts:      tt.args.sports,
+				DPorts:      tt.args.dports,
+				Duration:    tt.args.duration,
+				Sidecar:     container.SidecarSpec{Image: tt.args.image, Pull: tt.args.pull},
+				DryRun:      tt.args.dryRun,
 			}
 			delReq := &container.IPTablesRequest{
-				Container: tt.args.container,
-				CmdPrefix: tt.args.delCmdPrefix,
-				CmdSuffix: tt.args.cmdSuffix,
-				SrcIPs:    tt.args.srcIPs,
-				DstIPs:    tt.args.dstIPs,
-				SPorts:    tt.args.sports,
-				DPorts:    tt.args.dports,
-				Duration:  tt.args.duration,
-				Sidecar:   container.SidecarSpec{Image: tt.args.image, Pull: tt.args.pull},
-				DryRun:    tt.args.dryRun,
+				Container:   tt.args.container,
+				CmdPrefixes: [][]string{tt.args.delCmdPrefix},
+				CmdSuffix:   tt.args.cmdSuffix,
+				SrcIPs:      tt.args.srcIPs,
+				DstIPs:      tt.args.dstIPs,
+				SPorts:      tt.args.sports,
+				DPorts:      tt.args.dports,
+				Duration:    tt.args.duration,
+				Sidecar:     container.SidecarSpec{Image: tt.args.image, Pull: tt.args.pull},
+				DryRun:      tt.args.dryRun,
 			}
 			mockClient.EXPECT().IPTablesContainer(ctx, addReq).Return(startErr)
 

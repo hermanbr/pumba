@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -161,6 +162,7 @@ func (client dockerClient) runSidecarExec(ctx context.Context, sidecarID, tool s
 		AttachStderr: true,
 		Cmd:          append([]string{tool}, args...),
 	}
+	fmt.Fprintf(os.Stderr, "[pumba] exec on sidecar %s: %s\n", sidecarID, strings.Join(execConfig.Cmd, " "))
 	execCreateResponse, err := client.containerAPI.ContainerExecCreate(ctx, sidecarID, execConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create %s-container exec: %w", tool, err)

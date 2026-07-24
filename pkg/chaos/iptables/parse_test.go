@@ -135,7 +135,7 @@ func TestParseRequestBase(t *testing.T) {
 			assert.Equal(t, tt.wantIfac, base.Iface)
 			assert.Equal(t, tt.wantProt, base.Protocol)
 			assert.Equal(t, tt.wantDur, base.Request.Duration)
-			assert.Empty(t, base.Request.CmdPrefix, "CmdPrefix must be left for per-action parser to fill")
+			assert.Empty(t, base.Request.CmdPrefixes, "CmdPrefixes must be left for per-action parser to fill")
 			assert.Empty(t, base.Request.CmdSuffix, "CmdSuffix must be left for per-action parser to fill")
 			assert.Nil(t, base.Request.Container, "Container must be left for per-iteration assignment")
 		})

@@ -17,6 +17,13 @@ var (
 	delayDistribution = []string{"", "uniform", "normal", "pareto", "paretonormal"}
 )
 
+// delayQueueLimit is the netem qdisc queue length (in packets) applied whenever
+// a delay effect is present. netem's kernel default is only 1000, which tail-drops
+// (adding unwanted loss + a throughput cap) once the bandwidth-delay product
+// exceeds it — e.g. ~8300 packets are in flight at 1 Gbps × 100 ms. 10000 gives
+// headroom for 1 Gbps sub-second delay at a negligible ~15 MB max buffer.
+const delayQueueLimit = 10000
+
 // `netem delay` command
 type delayCommand struct {
 	client       netemClient
@@ -62,6 +69,8 @@ func delayArgs(delay, jitter int, correlation float64, distribution string) []st
 	if distribution != "" {
 		cmd = append(cmd, "distribution", distribution)
 	}
+	// set the qdisc queue length explicitly whenever delay is applied
+	cmd = append(cmd, "limit", strconv.Itoa(delayQueueLimit))
 	return cmd
 }
 

@@ -103,6 +103,9 @@ pumba netem --duration 5m delay --time 100 loss --percent 20 mydb
 # Drop 10% of incoming packets to myapp for 2 minutes
 pumba iptables --duration 2m loss --probability 0.1 myapp
 
+# Drop 10% of packets in BOTH directions (ingress + egress) for 2 minutes
+pumba iptables --duration 2m --bidirectional loss --probability 0.1 myapp
+
 # Stress CPU of mycontainer for 60 seconds
 pumba stress --duration 60s --stressors="--cpu 4 --timeout 60s" mycontainer
 ```

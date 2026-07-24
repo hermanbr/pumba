@@ -61,7 +61,7 @@ func TestNetemRequest_Hydration(t *testing.T) {
 func TestIPTablesRequest_ZeroValueIsSafe(t *testing.T) {
 	var r IPTablesRequest
 	assert.Nil(t, r.Container)
-	assert.Nil(t, r.CmdPrefix)
+	assert.Nil(t, r.CmdPrefixes)
 	assert.Nil(t, r.CmdSuffix)
 	assert.Nil(t, r.SrcIPs)
 	assert.Nil(t, r.DstIPs)
@@ -77,19 +77,19 @@ func TestIPTablesRequest_Hydration(t *testing.T) {
 	_, src, _ := net.ParseCIDR("10.0.0.0/24")
 	_, dst, _ := net.ParseCIDR("192.168.0.0/16")
 	r := IPTablesRequest{
-		Container: c,
-		CmdPrefix: []string{"-A", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
-		SrcIPs:    []*net.IPNet{src},
-		DstIPs:    []*net.IPNet{dst},
-		SPorts:    []string{"80"},
-		DPorts:    []string{"443"},
-		Duration:  5 * time.Second,
-		Sidecar:   SidecarSpec{Image: "img", Pull: true},
-		DryRun:    true,
+		Container:   c,
+		CmdPrefixes: [][]string{{"-A", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
+		SrcIPs:      []*net.IPNet{src},
+		DstIPs:      []*net.IPNet{dst},
+		SPorts:      []string{"80"},
+		DPorts:      []string{"443"},
+		Duration:    5 * time.Second,
+		Sidecar:     SidecarSpec{Image: "img", Pull: true},
+		DryRun:      true,
 	}
 	assert.Same(t, c, r.Container)
-	assert.Equal(t, []string{"-A", "INPUT"}, r.CmdPrefix)
+	assert.Equal(t, [][]string{{"-A", "INPUT"}}, r.CmdPrefixes)
 	assert.Equal(t, []string{"-j", "DROP"}, r.CmdSuffix)
 	assert.Equal(t, []*net.IPNet{src}, r.SrcIPs)
 	assert.Equal(t, []*net.IPNet{dst}, r.DstIPs)

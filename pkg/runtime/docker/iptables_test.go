@@ -165,16 +165,16 @@ func TestIPTablesContainer(t *testing.T) {
 
 			client := dockerClient{containerAPI: api, imageAPI: api}
 			err := client.IPTablesContainer(tt.args.ctx, &ctr.IPTablesRequest{
-				Container: tt.args.c,
-				CmdPrefix: tt.args.cmdPrefix,
-				CmdSuffix: tt.args.cmdSuffix,
-				SrcIPs:    tt.args.srcIPs,
-				DstIPs:    tt.args.dstIPs,
-				SPorts:    tt.args.sports,
-				DPorts:    tt.args.dports,
-				Duration:  tt.args.duration,
-				Sidecar:   ctr.SidecarSpec{Image: tt.args.image, Pull: tt.args.pull},
-				DryRun:    tt.args.dryrun,
+				Container:   tt.args.c,
+				CmdPrefixes: [][]string{tt.args.cmdPrefix},
+				CmdSuffix:   tt.args.cmdSuffix,
+				SrcIPs:      tt.args.srcIPs,
+				DstIPs:      tt.args.dstIPs,
+				SPorts:      tt.args.sports,
+				DPorts:      tt.args.dports,
+				Duration:    tt.args.duration,
+				Sidecar:     ctr.SidecarSpec{Image: tt.args.image, Pull: tt.args.pull},
+				DryRun:      tt.args.dryrun,
 			})
 
 			if (err != nil) != tt.wantErr {
@@ -195,10 +195,10 @@ func TestIPTablesForSimpleCases(t *testing.T) {
 
 	// Dry-run mode: no iptables commands expected
 	err := client.StopIPTablesContainer(ctx, &ctr.IPTablesRequest{
-		Container: container,
-		CmdPrefix: []string{"-A", "INPUT"},
-		CmdSuffix: []string{"-j", "DROP"},
-		DryRun:    true,
+		Container:   container,
+		CmdPrefixes: [][]string{{"-A", "INPUT"}},
+		CmdSuffix:   []string{"-j", "DROP"},
+		DryRun:      true,
 	})
 	assert.NoError(t, err, "StopIPTablesContainer in dry-run mode should not return error")
 

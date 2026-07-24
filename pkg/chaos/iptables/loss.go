@@ -13,16 +13,17 @@ import (
 
 // `iptables loss` command
 type lossCommand struct {
-	client      iptablesClient
-	gp          *chaos.GlobalParams
-	req         *container.IPTablesRequest
-	iface       string
-	protocol    string
-	limit       int
-	mode        string
-	probability float64
-	every       int
-	packet      int
+	client        iptablesClient
+	gp            *chaos.GlobalParams
+	req           *container.IPTablesRequest
+	iface         string
+	protocol      string
+	limit         int
+	bidirectional bool
+	mode          string
+	probability   float64
+	every         int
+	packet        int
 }
 
 const (
@@ -60,16 +61,17 @@ func NewLossCommand(client iptablesClient,
 	}
 
 	return &lossCommand{
-		client:      client,
-		gp:          gp,
-		req:         base.Request,
-		iface:       base.Iface,
-		protocol:    base.Protocol,
-		limit:       base.Limit,
-		mode:        mode,
-		probability: probability,
-		every:       every,
-		packet:      packet,
+		client:        client,
+		gp:            gp,
+		req:           base.Request,
+		iface:         base.Iface,
+		protocol:      base.Protocol,
+		limit:         base.Limit,
+		bidirectional: base.Bidirectional,
+		mode:          mode,
+		probability:   probability,
+		every:         every,
+		packet:        packet,
 	}, nil
 }
 
@@ -83,7 +85,7 @@ func (n *lossCommand) Run(ctx context.Context, random bool) error {
 		"limit":   n.limit,
 		"random":  random,
 	}).Debug("listing matching containers")
-	addCmdPrefix, delCmdPrefix, cmdSuffix := n.buildIPTablesCmd()
+	addCmdPrefixes, delCmdPrefixes, cmdSuffix := n.buildIPTablesCmd()
 	return chaos.RunOnContainers(ctx, n.client, n.gp, n.limit, random, true,
 		func(ctx context.Context, c *container.Container) error {
 			log.WithFields(log.Fields{"container": *c}).Debug("adding network random packet loss for container")
@@ -91,10 +93,10 @@ func (n *lossCommand) Run(ctx context.Context, random bool) error {
 			defer cancel()
 			addReq := *n.req
 			addReq.Container = c
-			addReq.CmdPrefix = addCmdPrefix
+			addReq.CmdPrefixes = addCmdPrefixes
 			addReq.CmdSuffix = cmdSuffix
 			delReq := addReq
-			delReq.CmdPrefix = delCmdPrefix
+			delReq.CmdPrefixes = delCmdPrefixes
 			if err := runIPTables(iptCtx, n.client, &addReq, &delReq); err != nil {
 				log.WithError(err).Warn("failed to set packet loss for container")
 				return fmt.Errorf("failed to add packet loss for one or more containers: %w", err)
@@ -103,13 +105,22 @@ func (n *lossCommand) Run(ctx context.Context, random bool) error {
 		})
 }
 
-func (n *lossCommand) buildIPTablesCmd() (addCmdPrefix, delCmdPrefix, cmdSuffix []string) {
-	cmdPrefix := []string{"INPUT", "-i", n.iface}
-	if n.protocol != "any" {
-		cmdPrefix = append(cmdPrefix, "-p", n.protocol)
+func (n *lossCommand) buildIPTablesCmd() (addCmdPrefixes, delCmdPrefixes [][]string, cmdSuffix []string) {
+	// chains lists the (chain, interface-flag) pairs to install the rule on.
+	// INPUT/-i (ingress) is always present; OUTPUT/-o (egress) is added when
+	// --bidirectional so the same loss is applied to outgoing packets too.
+	chains := [][2]string{{"INPUT", "-i"}}
+	if n.bidirectional {
+		chains = append(chains, [2]string{"OUTPUT", "-o"})
 	}
-	addCmdPrefix = append([]string{"-I"}, cmdPrefix...)
-	delCmdPrefix = append([]string{"-D"}, cmdPrefix...)
+	for _, ch := range chains {
+		cmdPrefix := []string{ch[0], ch[1], n.iface}
+		if n.protocol != "any" {
+			cmdPrefix = append(cmdPrefix, "-p", n.protocol)
+		}
+		addCmdPrefixes = append(addCmdPrefixes, append([]string{"-I"}, cmdPrefix...))
+		delCmdPrefixes = append(delCmdPrefixes, append([]string{"-D"}, cmdPrefix...))
+	}
 	cmdSuffix = []string{"-m", "statistic", "--mode", n.mode}
 	if n.mode == ModeRandom {
 		cmdSuffix = append(cmdSuffix, "--probability", strconv.FormatFloat(n.probability, 'f', 2, 64))
@@ -117,5 +128,5 @@ func (n *lossCommand) buildIPTablesCmd() (addCmdPrefix, delCmdPrefix, cmdSuffix 
 		cmdSuffix = append(cmdSuffix, "--every", strconv.Itoa(n.every), "--packet", strconv.Itoa(n.packet))
 	}
 	cmdSuffix = append(cmdSuffix, "-j", "DROP")
-	return addCmdPrefix, delCmdPrefix, cmdSuffix
+	return addCmdPrefixes, delCmdPrefixes, cmdSuffix
 }

@@ -32,18 +32,18 @@ const cleanupTimeout = 30 * time.Second
 // removal command (-D); both share the rest of the request fields.
 func runIPTables(ctx context.Context, client iptablesClient, addReq, delReq *container.IPTablesRequest) error {
 	logger := log.WithFields(log.Fields{
-		"id":           addReq.Container.ID(),
-		"name":         addReq.Container.Name(),
-		"addCmdPrefix": addReq.CmdPrefix,
-		"delCmdPrefix": delReq.CmdPrefix,
-		"cmdSuffix":    addReq.CmdSuffix,
-		"srcIPs":       addReq.SrcIPs,
-		"dstIPs":       addReq.DstIPs,
-		"sports":       addReq.SPorts,
-		"dports":       addReq.DPorts,
-		"duration":     addReq.Duration,
-		"image":        addReq.Sidecar.Image,
-		"pull":         addReq.Sidecar.Pull,
+		"id":             addReq.Container.ID(),
+		"name":           addReq.Container.Name(),
+		"addCmdPrefixes": addReq.CmdPrefixes,
+		"delCmdPrefixes": delReq.CmdPrefixes,
+		"cmdSuffix":      addReq.CmdSuffix,
+		"srcIPs":         addReq.SrcIPs,
+		"dstIPs":         addReq.DstIPs,
+		"sports":         addReq.SPorts,
+		"dports":         addReq.DPorts,
+		"duration":       addReq.Duration,
+		"image":          addReq.Sidecar.Image,
+		"pull":           addReq.Sidecar.Pull,
 	})
 	logger.Debug("running iptables command")
 	if err := client.IPTablesContainer(ctx, addReq); err != nil {

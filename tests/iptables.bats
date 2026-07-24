@@ -93,6 +93,39 @@ teardown() {
     assert_sidecar_cleaned
 }
 
+@test "Should apply bidirectional packet loss on INPUT and OUTPUT" {
+    # Given a running container
+    create_test_container "iptables_loss_target" "alpine" "sleep infinity"
+    assert_container_running "iptables_loss_target"
+    ensure_nettools_image
+
+    # When applying bidirectional packet loss
+    pumba -l debug --json iptables --duration 10s --iptables-image ${NETTOOLS_IMAGE} --pull-image=false --bidirectional loss --mode random --probability 1.0 iptables_loss_target &
+    PUMBA_PID=$!
+
+    # Then a DROP rule should appear on BOTH the INPUT and OUTPUT chains
+    wait_for 5 "nsenter -t \$(docker inspect -f '{{.State.Pid}}' iptables_loss_target) -n iptables -S OUTPUT 2>/dev/null | grep -qi DROP" "OUTPUT DROP rule to be applied"
+
+    local pid
+    pid=$(docker inspect -f '{{.State.Pid}}' iptables_loss_target)
+    run nsenter -t "$pid" -n iptables -S INPUT
+    assert_output --partial "-i eth0"
+    assert_output --partial "DROP"
+    run nsenter -t "$pid" -n iptables -S OUTPUT
+    assert_output --partial "-o eth0"
+    assert_output --partial "DROP"
+
+    # Wait for pumba to finish and verify clean exit
+    wait $PUMBA_PID
+    local pumba_exit=$?
+    [ $pumba_exit -eq 0 ]
+
+    # Both chains must be clean again
+    run nsenter -t "$pid" -n iptables -S
+    refute_output --partial "DROP"
+    assert_sidecar_cleaned
+}
+
 @test "Should apply packet loss with source IP filter" {
     # Given a running container
     create_test_container "iptables_target" "alpine" "sleep infinity"

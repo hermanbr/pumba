@@ -166,7 +166,7 @@ func TestDelayCommand_Run_DryRun(t *testing.T) {
 			correlation: 25.5,
 			dist:        "",
 			image:       "tc-image",
-			netemCmd:    []string{"delay", "200ms", "50ms", "25.50"},
+			netemCmd:    []string{"delay", "200ms", "50ms", "25.50", "limit", "10000"},
 		},
 		{
 			name:     "delay with distribution",
@@ -174,7 +174,7 @@ func TestDelayCommand_Run_DryRun(t *testing.T) {
 			jitter:   20,
 			dist:     "normal",
 			image:    "tc",
-			netemCmd: []string{"delay", "100ms", "20ms", "distribution", "normal"},
+			netemCmd: []string{"delay", "100ms", "20ms", "distribution", "normal", "limit", "10000"},
 		},
 	}
 

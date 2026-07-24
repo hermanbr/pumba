@@ -115,6 +115,10 @@ func initializeCLICommands(runtime chaos.Runtime) []cli.Command {
 					Name:  "pull-image",
 					Usage: "force pull iptables-image",
 				},
+				cli.BoolFlag{
+					Name:  "bidirectional",
+					Usage: "apply the filter on egress (OUTPUT) as well as ingress (INPUT); IPv4 only",
+				},
 				cli.IntFlag{
 					Name:  "limit",
 					Usage: "limit number of matching containers (0: target all)",

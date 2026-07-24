@@ -34,15 +34,18 @@ type NetemRequest struct {
 // struct; Duration is ignored on stop. Zero values are safe.
 type IPTablesRequest struct {
 	Container *Container
-	CmdPrefix []string
-	CmdSuffix []string
-	SrcIPs    []*net.IPNet
-	DstIPs    []*net.IPNet
-	SPorts    []string
-	DPorts    []string
-	Duration  time.Duration
-	Sidecar   SidecarSpec
-	DryRun    bool
+	// CmdPrefixes holds one iptables rule prefix per target chain (e.g. an
+	// INPUT/-i prefix, plus an OUTPUT/-o prefix when --bidirectional). Each is
+	// combined with CmdSuffix (and any per-IP/port match) to form a full rule.
+	CmdPrefixes [][]string
+	CmdSuffix   []string
+	SrcIPs      []*net.IPNet
+	DstIPs      []*net.IPNet
+	SPorts      []string
+	DPorts      []string
+	Duration    time.Duration
+	Sidecar     SidecarSpec
+	DryRun      bool
 }
 
 // StressRequest carries every parameter required to apply a stress-ng workload

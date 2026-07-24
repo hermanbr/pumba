@@ -146,7 +146,7 @@ func TestEffectsCommand_Run_DryRun(t *testing.T) {
 				Loss:    &LossSpec{Percent: 20.0},
 				Corrupt: &CorruptSpec{Percent: 5.0},
 			},
-			netemCmd: []string{"delay", "100ms", "10ms", "loss", "20.00", "corrupt", "5.00"},
+			netemCmd: []string{"delay", "100ms", "10ms", "limit", "10000", "loss", "20.00", "corrupt", "5.00"},
 		},
 		{
 			name: "all effects fixed order",
@@ -158,7 +158,7 @@ func TestEffectsCommand_Run_DryRun(t *testing.T) {
 				Rate:      &RateSpec{Rate: "100kbit"},
 			},
 			netemCmd: []string{
-				"delay", "200ms", "50ms", "25.50", "distribution", "normal",
+				"delay", "200ms", "50ms", "25.50", "distribution", "normal", "limit", "10000",
 				"loss", "10.00", "5.00",
 				"duplicate", "3.00",
 				"corrupt", "1.00",
